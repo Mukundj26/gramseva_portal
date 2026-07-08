@@ -1,0 +1,140 @@
+{
+  "collections": {
+    "users": {
+      "description": "User profiles for all roles (Citizen, Farmer, Admin).",
+      "fields": {
+        "uid": "String (matches Firebase Auth UID)",
+        "email": "String",
+        "displayName": "String",
+        "role": "String ('citizen' | 'farmer' | 'admin')",
+        "createdAt": "Timestamp"
+      }
+    },
+    "applications": {
+      "description": "Certificate applications submitted by citizens.",
+      "fields": {
+        "id": "String (document ID)",
+        "userId": "String (citizen UID)",
+        "applicantName": "String",
+        "type": "String ('birth' | 'death' | 'income' | 'residence')",
+        "status": "String ('pending' | 'under_verification' | 'approved' | 'rejected')",
+        "submittedAt": "Timestamp",
+        "updatedAt": "Timestamp",
+        "details": {
+          "birth": {
+            "fullName": "String",
+            "dateOfBirth": "String",
+            "placeOfBirth": "String",
+            "fatherName": "String",
+            "motherName": "String"
+          },
+          "death": {
+            "fullName": "String",
+            "dateOfDeath": "String",
+            "placeOfDeath": "String",
+            "age": "Number",
+            "causeOfDeath": "String"
+          },
+          "income": {
+            "fullName": "String",
+            "annualIncome": "Number",
+            "sourceOfIncome": "String",
+            "purpose": "String"
+          },
+          "residence": {
+            "fullName": "String",
+            "address": "String",
+            "durationOfStay": "String",
+            "purpose": "String"
+          }
+        },
+        "documents": "Array of { name: String, url: String }",
+        "adminRemarks": "String"
+      }
+    },
+    "farmers": {
+      "description": "Supplementary profile data for farmers.",
+      "fields": {
+        "userId": "String (matches users.uid)",
+        "landSize": "Number (in acres)",
+        "soilType": "String ('clay' | 'sandy' | 'loamy' | 'alluvial' | 'black')",
+        "waterSource": "String ('rainfed' | 'canal' | 'borewell' | 'drip')",
+        "currentCrop": "String",
+        "cropHistory": "Array of Strings",
+        "income": "Number",
+        "category": "String ('small' | 'marginal' | 'large')"
+      }
+    },
+    "crops": {
+      "description": "Global reference data of crops, editable only by Admin.",
+      "fields": {
+        "id": "String",
+        "name": "String",
+        "soilType": "Array of Strings",
+        "season": "Array of Strings",
+        "waterRequirement": "String ('high' | 'medium' | 'low')",
+        "expectedYield": "String",
+        "fertilizers": "Array of Strings",
+        "pests": "Array of Strings"
+      }
+    },
+    "government_schemes": {
+      "description": "Global reference data of agricultural schemes, editable only by Admin.",
+      "fields": {
+        "id": "String",
+        "name": "String",
+        "description": "String",
+        "incomeLimit": "Number",
+        "maxLandSize": "Number",
+        "category": "Array of Strings",
+        "benefits": "String"
+      }
+    },
+    "weather": {
+      "description": "Active weather forecast data.",
+      "fields": {
+        "id": "String ('current')",
+        "temp": "Number",
+        "humidity": "Number",
+        "wind": "Number",
+        "rain": "Number (probability %)",
+        "condition": "String"
+      }
+    },
+    "roles_admin": {
+      "description": "Collection verifying admin registrations. Checked via Firestore Rules.",
+      "fields": {
+        "email": "String"
+      }
+    },
+    "notifications": {
+      "description": "Real-time notifications sent to citizens on approval / rejection.",
+      "fields": {
+        "id": "String",
+        "userId": "String",
+        "title": "String",
+        "message": "String",
+        "read": "Boolean",
+        "createdAt": "Timestamp"
+      }
+    },
+    "crop_recommendations": {
+      "description": "Historical AI recommendations for Farmers.",
+      "fields": {
+        "id": "String",
+        "userId": "String",
+        "soilType": "String",
+        "season": "String",
+        "waterAvailability": "String",
+        "recommendation": {
+          "bestCrop": "String",
+          "expectedYield": "String",
+          "fertilizerSuggestion": "String",
+          "irrigationAdvice": "String",
+          "pestPrevention": "String"
+        },
+        "createdAt": "Timestamp"
+      }
+    }
+  }
+}

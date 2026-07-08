@@ -1,0 +1,76 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is an administrator
+    function isAdmin() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    // Helper function to check if the user is accessing their own document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 1. Users collection rules
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // 2. Farmers collection rules
+    match /farmers/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // 3. Applications collection rules
+    match /applications/{applicationId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // 4. Crops collection rules (Reference data)
+    match /crops/{cropId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 5. Government Schemes collection rules (Reference data)
+    match /government_schemes/{schemeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 6. Weather collection rules (Reference data)
+    match /weather/{weatherId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 7. Roles Admin collection rules
+    match /roles_admin/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 8. Notifications collection rules
+    match /notifications/{notificationId} {
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // 9. Crop Recommendations collection rules
+    match /crop_recommendations/{recommendationId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+  }
+}
