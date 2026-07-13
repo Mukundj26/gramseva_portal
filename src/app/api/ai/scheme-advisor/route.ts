@@ -58,6 +58,49 @@ const fallbackSchemes = [
       return land <= 3 && income <= 300000 && (category === 'small' || category === 'marginal');
     },
     reason: 'Recommended because your land size (<= 3 acres) and income bracket make you eligible for our Panchayat-specific financial subsidy to establish eco-friendly organic farming units.'
+  },
+  {
+    name: 'PMKSY - Micro Irrigation Subsidy',
+    description: 'Financial assistance scheme for implementing modern drip and sprinkler irrigation systems.',
+    benefits: 'Up to 55% direct capital subsidy on installation costs for small/marginal farmers, and 45% for other farmers.',
+    checkEligibility: (income: number, land: number, category: string) => {
+      return land <= 10;
+    },
+    reason: 'Recommended to help you implement modern, water-saving drip or sprinkler irrigation technologies with up to 55% direct financial subsidy from the government.'
+  },
+  {
+    name: 'PM-Kusum Solar Pump Scheme',
+    description: 'Solar energy support scheme for installing subsidized solar water pumps and solarizing grid-connected agricultural pumps.',
+    benefits: '60% overall capital subsidy (30% central + 30% state gov), with bank loans covering 30% and farmer contribution of only 10%.',
+    checkEligibility: () => true,
+    reason: 'Recommended to help you install a highly subsidized solar-powered water pump, freeing you from diesel costs and power cut issues for daytime irrigation.'
+  },
+  {
+    name: 'SMAM Tractor & Farm Implement Subsidy',
+    description: 'Central sector scheme for promoting agricultural mechanization and custom hiring centers.',
+    benefits: '40% to 50% direct financial subsidy on the purchase of tractors, rotavators, power tillers, and sowing drills.',
+    checkEligibility: (income: number, land: number, category: string) => {
+      return land <= 5 && (category === 'small' || category === 'marginal');
+    },
+    reason: 'Recommended because as a small/marginal farmer holding under 5 acres, you qualify for 50% financial subsidy on agricultural machinery to increase farm productivity.'
+  },
+  {
+    name: 'National Horticulture Mission (NHM)',
+    description: 'Development program targeting holistic growth of the horticulture sector (fruits, vegetables, flowers, spices).',
+    benefits: '50% capital subsidy (up to ₹3 Lakhs) for polyhouse/greenhouse construction, nursery setup, and cold storage units.',
+    checkEligibility: (income: number, land: number, category: string) => {
+      return income <= 600000;
+    },
+    reason: 'Recommended to support diversification into high-yield fruit orchards or protected polyhouse vegetable farming with substantial capital subsidies.'
+  },
+  {
+    name: 'National Livestock Mission (NLM)',
+    description: 'Financial support program encouraging entrepreneurs and farmers to establish dairy, poultry, and goat rearing units.',
+    benefits: '25% capital subsidy (33.3% for SC/ST categories) on bank loans for purchasing crossbred cattle, building sheds, and feed management.',
+    checkEligibility: (income: number, land: number, category: string) => {
+      return income <= 400000;
+    },
+    reason: 'Recommended to provide auxiliary income security by setting up a dairy or goat farming unit with up to 33% capital subsidy on livestock procurement.'
   }
 ];
 
@@ -101,7 +144,7 @@ Do not wrap the output in markdown block format. Output only the raw parseable J
 
       try {
         const response = await ai.generate({
-          model: 'googleai/gemini-1.5-flash',
+          model: 'googleai/gemini-2.5-flash',
           prompt: prompt,
           config: {
             temperature: 0.1,

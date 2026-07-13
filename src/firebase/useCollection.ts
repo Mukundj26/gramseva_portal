@@ -39,7 +39,11 @@ export function useCollection<T = any>(
 
           // Convert object to array if it is registered as an object Map (e.g. users, farmers)
           if (!Array.isArray(list)) {
-            list = Object.values(list);
+            if (collectionName === 'weather') {
+              list = [list];
+            } else {
+              list = Object.values(list);
+            }
           }
 
           let result = [...list];

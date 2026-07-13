@@ -7,6 +7,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useCollection } from '@/firebase/useCollection';
 import { db } from '@/firebase/config';
 import { useToast } from '@/components/ui/Toast';
+import NoticeBoard from '@/components/NoticeBoard';
+import GrievanceBox from '@/components/GrievanceBox';
+import VillageDirectory from '@/components/VillageDirectory';
+import SmartCalendar from '@/components/SmartCalendar';
 import {
   FileText,
   Clock,
@@ -49,6 +53,8 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
   const [formData, setFormData] = useState<any>({});
   const [documents, setDocuments] = useState<{ name: string; url: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
 
   // Calculate statistics
   const totalApps = applications?.length || 0;
@@ -61,9 +67,63 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setDocuments([{ name: file.name, url: reader.result as string }]);
+      reader.onloadend = async () => {
+        const fileUrl = reader.result as string;
+        setDocuments([{ name: file.name, url: fileUrl }]);
         showToast('Document uploaded successfully!', 'success');
+
+        // Trigger AI Document OCR & Verification
+        setOcrLoading(true);
+        setOcrResult(null);
+        try {
+          const response = await fetch('/api/ai/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              documentUrl: fileUrl,
+              documentName: file.name,
+              certType: certType
+            })
+          });
+
+          const json = await response.json();
+          if (!response.ok) throw new Error(json.error || 'OCR failed');
+
+          const result = json.data;
+          setOcrResult(result);
+
+          if (result.isValid) {
+            showToast('AI Document Verification Successful! Auto-filling form fields...', 'success');
+
+            // Auto-fill form fields
+            setFormData((prev: any) => {
+              const updated = { ...prev };
+              if (result.extractedName) {
+                updated.fullName = result.extractedName;
+              }
+              if (certType === 'birth' && result.details?.dob) {
+                updated.dateOfBirth = result.details.dob;
+              }
+              if (certType === 'income' && result.details?.annualIncome) {
+                updated.annualIncome = result.details.annualIncome;
+              }
+              if (certType === 'residence' && result.details?.address) {
+                updated.address = result.details.address;
+              }
+              if (certType === 'death' && result.details?.dateOfDeath) {
+                updated.dateOfDeath = result.details.dateOfDeath;
+              }
+              return updated;
+            });
+          } else {
+            showToast(result.remarks || 'AI Document Verification warning.', 'warning');
+          }
+        } catch (err: any) {
+          console.error(err);
+          showToast('AI Document Verification was unable to complete, please fill form manually.', 'info');
+        } finally {
+          setOcrLoading(false);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -324,6 +384,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                   <input
                     type="text"
                     required
+                    value={formData.fullName || ''}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     placeholder="Enter full name"
@@ -335,6 +396,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <input
                       type="date"
                       required
+                      value={formData.dateOfBirth || ''}
                       onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     />
@@ -344,6 +406,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <input
                       type="text"
                       required
+                      value={formData.placeOfBirth || ''}
                       onChange={(e) => handleInputChange('placeOfBirth', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="Hospital, Clinic or Home"
@@ -355,6 +418,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1.5">Father's Full Name</label>
                     <input
                       type="text"
+                      value={formData.fatherName || ''}
                       onChange={(e) => handleInputChange('fatherName', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="Father's name"
@@ -364,6 +428,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1.5">Mother's Full Name</label>
                     <input
                       type="text"
+                      value={formData.motherName || ''}
                       onChange={(e) => handleInputChange('motherName', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="Mother's name"
@@ -380,6 +445,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                   <input
                     type="text"
                     required
+                    value={formData.fullName || ''}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     placeholder="Enter deceased's full name"
@@ -391,6 +457,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <input
                       type="date"
                       required
+                      value={formData.dateOfDeath || ''}
                       onChange={(e) => handleInputChange('dateOfDeath', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     />
@@ -400,6 +467,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <input
                       type="text"
                       required
+                      value={formData.placeOfDeath || ''}
                       onChange={(e) => handleInputChange('placeOfDeath', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="E.g. Rampur Village"
@@ -411,6 +479,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1.5">Age</label>
                     <input
                       type="number"
+                      value={formData.age || ''}
                       onChange={(e) => handleInputChange('age', Number(e.target.value))}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="Age at death"
@@ -420,6 +489,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1.5">Cause of Death</label>
                     <input
                       type="text"
+                      value={formData.causeOfDeath || ''}
                       onChange={(e) => handleInputChange('causeOfDeath', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="E.g. Natural, Heart Attack"
@@ -436,6 +506,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                   <input
                     type="text"
                     required
+                    value={formData.fullName || ''}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     placeholder="Enter full name"
@@ -447,6 +518,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <input
                       type="number"
                       required
+                      value={formData.annualIncome || ''}
                       onChange={(e) => handleInputChange('annualIncome', Number(e.target.value))}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="E.g. 150000"
@@ -457,6 +529,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <input
                       type="text"
                       required
+                      value={formData.sourceOfIncome || ''}
                       onChange={(e) => handleInputChange('sourceOfIncome', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="E.g. Farming, Labor"
@@ -467,6 +540,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                   <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1.5">Purpose of Certificate</label>
                   <input
                     type="text"
+                    value={formData.purpose || ''}
                     onChange={(e) => handleInputChange('purpose', e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     placeholder="E.g. Scholarship, Bank Loan"
@@ -478,10 +552,11 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
             {certType === 'residence' && (
               <>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1.5">Applicant's Full Name</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-505 mb-1.5">Applicant's Full Name</label>
                   <input
                     type="text"
                     required
+                    value={formData.fullName || ''}
                     onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     placeholder="Enter full name"
@@ -493,6 +568,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <input
                       type="text"
                       required
+                      value={formData.durationOfStay || ''}
                       onChange={(e) => handleInputChange('durationOfStay', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="E.g. 15 Years"
@@ -502,6 +578,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                     <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-1.5">Purpose</label>
                     <input
                       type="text"
+                      value={formData.purpose || ''}
                       onChange={(e) => handleInputChange('purpose', e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="E.g. Ration Card, Voter ID"
@@ -513,6 +590,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                   <textarea
                     rows={3}
                     required
+                    value={formData.address || ''}
                     onChange={(e) => handleInputChange('address', e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-900 dark:text-stone-100 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     placeholder="Ward No., House details..."
@@ -546,7 +624,10 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setDocuments([])}
+                    onClick={() => {
+                      setDocuments([]);
+                      setOcrResult(null);
+                    }}
                     className="text-xs text-rose-600 font-bold hover:underline shrink-0 ml-2"
                   >
                     Remove
@@ -554,6 +635,34 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
                 </div>
               )}
             </div>
+
+            {/* AI Document Verification (OCR) Status Box */}
+            {(ocrLoading || ocrResult) && (
+              <div className={`p-4 rounded-xl border transition ${
+                ocrLoading
+                  ? 'bg-stone-50 dark:bg-stone-950/20 border-stone-200 animate-pulse text-stone-500'
+                  : ocrResult.isValid
+                    ? 'bg-emerald-55/10 dark:bg-emerald-950/15 border-emerald-500/20 text-emerald-800 dark:text-emerald-400'
+                    : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-500/20 text-amber-800 dark:text-amber-450'
+              }`}>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className={`inline-block w-2 h-2 rounded-full ${ocrLoading ? 'bg-amber-500 animate-ping' : ocrResult.isValid ? 'bg-emerald-600 animate-pulse' : 'bg-amber-500'}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">GramVikas Document AI Check</span>
+                </div>
+                {ocrLoading ? (
+                  <p className="text-xs">Analyzing document metadata and verifying credentials via OCR...</p>
+                ) : (
+                  <div>
+                    <p className="text-xs font-medium">{ocrResult.remarks}</p>
+                    {ocrResult.isValid && (
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 mt-1 font-bold">
+                        Extracted Name: {ocrResult.extractedName} • Match Confidence: {Math.round(ocrResult.confidence * 100)}%
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Submit Bar */}
             <div className="pt-4 flex justify-end gap-3">
@@ -566,7 +675,7 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
               </button>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || ocrLoading}
                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white rounded-xl text-xs font-bold transition shadow-md"
               >
                 {submitting ? 'Submitting...' : 'Submit Application'}
@@ -625,6 +734,26 @@ export default function CitizenDashboard({ currentUser }: CitizenProps) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Tab 4: Notice Board */}
+      {activeTab === 'notice-board' && (
+        <NoticeBoard />
+      )}
+
+      {/* Tab 5: Grievances / Complaint Box */}
+      {activeTab === 'complaints' && (
+        <GrievanceBox currentUser={currentUser} />
+      )}
+
+      {/* Tab 6: Village Directory Info Map */}
+      {activeTab === 'village-info' && (
+        <VillageDirectory />
+      )}
+
+      {/* Tab 7: Smart Calendar */}
+      {activeTab === 'calendar' && (
+        <SmartCalendar isFarmer={false} />
       )}
     </div>
   );

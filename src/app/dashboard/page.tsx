@@ -10,6 +10,7 @@ import Sidebar from '@/components/Sidebar';
 import CitizenDashboard from './citizen/CitizenDashboard';
 import FarmerDashboard from './farmer/FarmerDashboard';
 import AdminDashboard from './admin/AdminDashboard';
+import ChatbotWidget from '@/components/ChatbotWidget';
 
 function DashboardContent() {
   const router = useRouter();
@@ -78,6 +79,7 @@ function DashboardContent() {
           )}
         </main>
       </div>
+      <ChatbotWidget />
     </div>
   );
 }

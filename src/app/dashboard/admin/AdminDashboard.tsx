@@ -8,6 +8,8 @@ import { useCollection } from '@/firebase/useCollection';
 import { db } from '@/firebase/config';
 import { useToast } from '@/components/ui/Toast';
 import { Modal } from '@/components/ui/Modal';
+import NoticeBoard from '@/components/NoticeBoard';
+import VillageDirectory from '@/components/VillageDirectory';
 import {
   Users,
   ShieldAlert,
@@ -41,6 +43,9 @@ export default function AdminDashboard({ currentUser }: AdminProps) {
   // Load all applications
   const { data: allApplications } = useCollection<any>('applications');
 
+  // Load all complaints
+  const { data: complaints } = useCollection<any>('complaints');
+
   // Load Reference Crops
   const { data: crops } = useCollection<any>('crops');
 
@@ -69,6 +74,36 @@ export default function AdminDashboard({ currentUser }: AdminProps) {
   const [remarks, setRemarks] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [updatingApp, setUpdatingApp] = useState(false);
+
+  // Complaints management modal states
+  const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
+  const [complaintRemarks, setComplaintRemarks] = useState('');
+  const [complaintStatus, setComplaintStatus] = useState<'pending' | 'in_progress' | 'resolved'>('pending');
+  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+  const [savingComplaint, setSavingComplaint] = useState(false);
+
+  const handleOpenComplaint = (comp: any) => {
+    setSelectedComplaint(comp);
+    setComplaintRemarks(comp.adminRemarks || '');
+    setComplaintStatus(comp.status);
+    setComplaintModalOpen(true);
+  };
+
+  const handleUpdateComplaint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedComplaint) return;
+    setSavingComplaint(true);
+    try {
+      await db.simulator.updateComplaintStatus(selectedComplaint.id, complaintStatus, complaintRemarks);
+      showToast('Grievance status updated successfully!', 'success');
+      setComplaintModalOpen(false);
+      setSelectedComplaint(null);
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update complaint status', 'error');
+    } finally {
+      setSavingComplaint(false);
+    }
+  };
 
   // Weather configuration form states
   const [weatherTemp, setWeatherTemp] = useState(weather.temp);
@@ -811,6 +846,164 @@ export default function AdminDashboard({ currentUser }: AdminProps) {
           </div>
         </form>
       </Modal>
+      {/* Tab 4: Notice Board */}
+      {activeTab === 'notice-board' && (
+        <NoticeBoard isAdmin={true} />
+      )}
+
+      {/* Tab 5: Complaints Manager Board */}
+      {activeTab === 'complaints-manager' && (
+        <div className="bg-white dark:bg-stone-900 border border-emerald-50 dark:border-stone-850 rounded-2xl shadow-sm p-6">
+          <h4 className="font-extrabold text-stone-900 dark:text-white mb-4">Grievance Resolution Queue</h4>
+          {!complaints || complaints.length === 0 ? (
+            <div className="text-center py-12 text-stone-400">
+              No citizen grievances have been submitted yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-stone-100 dark:border-stone-850 text-stone-400 font-bold text-xs uppercase">
+                    <th className="pb-3">Grievance ID</th>
+                    <th className="pb-3">Category</th>
+                    <th className="pb-3">Submitted On</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3 text-right">Inspect Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 dark:divide-stone-850">
+                  {complaints.map((comp: any) => (
+                    <tr key={comp.id} className="hover:bg-stone-50/50 dark:hover:bg-stone-850/20 transition">
+                      <td className="py-3.5 font-bold text-stone-700 dark:text-stone-300">
+                        {comp.id}
+                      </td>
+                      <td className="py-3.5 font-semibold text-stone-850 dark:text-stone-200 capitalize">
+                        {comp.category} Issue
+                      </td>
+                      <td className="py-3.5 text-xs text-stone-450">
+                        {new Date(comp.submittedAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize ${
+                            comp.status === 'resolved'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : comp.status === 'in_progress'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-amber-100 text-amber-850'
+                          }`}
+                        >
+                          {comp.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenComplaint(comp)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 ml-auto shadow-sm"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Inspect Issue
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Grievance Inspection Modal */}
+      <Modal isOpen={complaintModalOpen} onClose={() => setComplaintModalOpen(false)} title="Inspect & Update Grievance Status">
+        {selectedComplaint && (
+          <form onSubmit={handleUpdateComplaint} className="space-y-4 text-xs">
+            <div className="p-4 bg-stone-50 dark:bg-stone-950/25 border border-stone-100 dark:border-stone-850 rounded-xl space-y-2">
+              <div className="flex justify-between">
+                <span className="font-bold text-stone-450">Grievance ID:</span>
+                <span className="font-bold text-stone-750 dark:text-stone-250">{selectedComplaint.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-bold text-stone-450">Category:</span>
+                <span className="font-bold capitalize">{selectedComplaint.category}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-bold text-stone-450">Coordinates:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{selectedComplaint.location}</span>
+              </div>
+            </div>
+
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 mb-1">Issue Description</span>
+              <p className="p-3 border border-stone-150 rounded-xl bg-stone-50/50 dark:bg-stone-950/10 leading-relaxed font-semibold text-stone-750 dark:text-stone-300">
+                {selectedComplaint.description}
+              </p>
+            </div>
+
+            {selectedComplaint.photoUrl && (
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 mb-1">Grievance Photo Evidence</span>
+                <div className="max-w-[200px] h-32 rounded-xl overflow-hidden border border-stone-150 bg-stone-100">
+                  <img
+                    src={selectedComplaint.photoUrl}
+                    alt="Proof evidence"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 mb-1">Set Resolution Status</label>
+                <select
+                  value={complaintStatus}
+                  onChange={(e: any) => setComplaintStatus(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-stone-250 bg-white dark:bg-stone-900 focus:outline-none font-bold"
+                >
+                  <option value="pending">Submitted (Pending)</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 mb-1">Official Resolution Remarks</label>
+              <textarea
+                value={complaintRemarks}
+                onChange={(e) => setComplaintRemarks(e.target.value)}
+                rows={3}
+                placeholder="Enter actions taken, contractor assignments, or resolution verification..."
+                className="w-full px-3 py-2 rounded-xl border border-stone-250 bg-white dark:bg-stone-900 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setComplaintModalOpen(false)}
+                className="px-4 py-2 border rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingComplaint}
+                className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold"
+              >
+                {savingComplaint ? 'Saving...' : 'Update Grievance'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Tab 6: Village Directory Info Map */}
+      {activeTab === 'village-info' && (
+        <VillageDirectory isAdmin={true} />
+      )}
     </div>
   );
 }

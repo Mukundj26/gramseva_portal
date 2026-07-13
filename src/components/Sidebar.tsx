@@ -11,9 +11,14 @@ import {
   Award,
   CloudSun,
   ShieldCheck,
+  ShieldAlert,
   ClipboardList,
   Database,
-  UserCheck
+  UserCheck,
+  TrendingUp,
+  AlertTriangle,
+  Map,
+  Calendar
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -51,6 +56,30 @@ export default function Sidebar({ currentUser, isOpen, onClose }: SidebarProps) 
         icon: Bell,
         href: '/dashboard?tab=notifications',
       },
+      {
+        id: 'notice-board',
+        label: 'Notice Board',
+        icon: ClipboardList,
+        href: '/dashboard?tab=notice-board',
+      },
+      {
+        id: 'complaints',
+        label: 'Complaint Box',
+        icon: AlertTriangle,
+        href: '/dashboard?tab=complaints',
+      },
+      {
+        id: 'village-info',
+        label: 'Village Directory',
+        icon: Map,
+        href: '/dashboard?tab=village-info',
+      },
+      {
+        id: 'calendar',
+        label: 'Smart Calendar',
+        icon: Calendar,
+        href: '/dashboard?tab=calendar',
+      },
     ],
     farmer: [
       {
@@ -77,6 +106,42 @@ export default function Sidebar({ currentUser, isOpen, onClose }: SidebarProps) 
         icon: CloudSun,
         href: '/dashboard?tab=weather',
       },
+      {
+        id: 'crop-health',
+        label: 'Crop Health Scanner',
+        icon: ShieldAlert,
+        href: '/dashboard?tab=crop-health',
+      },
+      {
+        id: 'market-info',
+        label: 'Market Information',
+        icon: TrendingUp,
+        href: '/dashboard?tab=market-info',
+      },
+      {
+        id: 'notice-board',
+        label: 'Notice Board',
+        icon: ClipboardList,
+        href: '/dashboard?tab=notice-board',
+      },
+      {
+        id: 'complaints',
+        label: 'Complaint Box',
+        icon: AlertTriangle,
+        href: '/dashboard?tab=complaints',
+      },
+      {
+        id: 'village-info',
+        label: 'Village Directory',
+        icon: Map,
+        href: '/dashboard?tab=village-info',
+      },
+      {
+        id: 'calendar',
+        label: 'Smart Calendar',
+        icon: Calendar,
+        href: '/dashboard?tab=calendar',
+      },
     ],
     admin: [
       {
@@ -96,6 +161,24 @@ export default function Sidebar({ currentUser, isOpen, onClose }: SidebarProps) 
         label: 'Reference Manager',
         icon: Database,
         href: '/dashboard?tab=reference-data',
+      },
+      {
+        id: 'notice-board',
+        label: 'Notice Board',
+        icon: ClipboardList,
+        href: '/dashboard?tab=notice-board',
+      },
+      {
+        id: 'complaints-manager',
+        label: 'Complaints Manager',
+        icon: AlertTriangle,
+        href: '/dashboard?tab=complaints-manager',
+      },
+      {
+        id: 'village-info',
+        label: 'Village Directory Manager',
+        icon: Map,
+        href: '/dashboard?tab=village-info',
       },
     ],
   };
