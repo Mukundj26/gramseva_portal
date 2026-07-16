@@ -705,6 +705,9 @@ const initialFacilities: MockFacility[] = [
   }
 ];
 
+let cachedDB: any = null;
+let isSyncing = false;
+
 // Helper to access LocalStorage safely in Next.js Server Components / SSR
 function loadDB() {
   if (typeof window === 'undefined') {
@@ -725,57 +728,13 @@ function loadDB() {
     };
   }
 
-  const stored = localStorage.getItem('gramvikas_db');
-  if (!stored) {
-    const data = {
-      users: initialUsers,
-      farmers: initialFarmers,
-      applications: initialApplications,
-      crops: initialCrops,
-      government_schemes: initialSchemes,
-      weather: initialWeather,
-      roles_admin: initialRolesAdmin,
-      notifications: initialNotifications,
-      crop_recommendations: [],
-      notices: initialNotices,
-      complaints: initialComplaints,
-      facilities: initialFacilities,
-      currentUser: null,
-    };
-    localStorage.setItem('gramvikas_db', JSON.stringify(data));
-    return data;
+  if (cachedDB) {
+    return cachedDB;
   }
 
-  try {
-    const parsed = JSON.parse(stored);
-    let updated = false;
-    if (!parsed.notices) {
-      parsed.notices = initialNotices;
-      updated = true;
-    }
-    if (!parsed.complaints) {
-      parsed.complaints = initialComplaints;
-      updated = true;
-    }
-    if (!parsed.facilities || parsed.facilities.some((f: any) => f.name.includes('Rampur'))) {
-      parsed.facilities = initialFacilities;
-      updated = true;
-    }
-    if (!parsed.government_schemes || !parsed.government_schemes.some((s: any) => s.deadline)) {
-      parsed.government_schemes = initialSchemes;
-      updated = true;
-    }
-    if (!parsed.crops || !parsed.crops.some((c: any) => c.sowingStart)) {
-      parsed.crops = initialCrops;
-      updated = true;
-    }
-    if (updated) {
-      localStorage.setItem('gramvikas_db', JSON.stringify(parsed));
-    }
-    return parsed;
-  } catch (e) {
-    console.error('Failed to parse database, resetting.', e);
-    const data = {
+  const stored = localStorage.getItem('gramvikas_db');
+  if (!stored) {
+    cachedDB = {
       users: initialUsers,
       farmers: initialFarmers,
       applications: initialApplications,
@@ -784,22 +743,124 @@ function loadDB() {
       weather: initialWeather,
       roles_admin: initialRolesAdmin,
       notifications: initialNotifications,
-      crop_recommendations: [],
+      crop_recommendations: [] as MockCropRecommendation[],
       notices: initialNotices,
       complaints: initialComplaints,
       facilities: initialFacilities,
-      currentUser: null,
+      currentUser: null as MockUser | null,
     };
-    localStorage.setItem('gramvikas_db', JSON.stringify(data));
-    return data;
+    localStorage.setItem('gramvikas_db', JSON.stringify(cachedDB));
+    syncPush(cachedDB);
+  } else {
+    try {
+      cachedDB = JSON.parse(stored);
+      let updated = false;
+      if (!cachedDB.notices) {
+        cachedDB.notices = initialNotices;
+        updated = true;
+      }
+      if (!cachedDB.complaints) {
+        cachedDB.complaints = initialComplaints;
+        updated = true;
+      }
+      if (!cachedDB.facilities || cachedDB.facilities.some((f: any) => f.name.includes('Rampur'))) {
+        cachedDB.facilities = initialFacilities;
+        updated = true;
+      }
+      if (!cachedDB.government_schemes || !cachedDB.government_schemes.some((s: any) => s.deadline)) {
+        cachedDB.government_schemes = initialSchemes;
+        updated = true;
+      }
+      if (!cachedDB.crops || !cachedDB.crops.some((c: any) => c.sowingStart)) {
+        cachedDB.crops = initialCrops;
+        updated = true;
+      }
+      if (updated) {
+        localStorage.setItem('gramvikas_db', JSON.stringify(cachedDB));
+        syncPush(cachedDB);
+      }
+    } catch (e) {
+      cachedDB = {
+        users: initialUsers,
+        farmers: initialFarmers,
+        applications: initialApplications,
+        crops: initialCrops,
+        government_schemes: initialSchemes,
+        weather: initialWeather,
+        roles_admin: initialRolesAdmin,
+        notifications: initialNotifications,
+        crop_recommendations: [] as MockCropRecommendation[],
+        notices: initialNotices,
+        complaints: initialComplaints,
+        facilities: initialFacilities,
+        currentUser: null as MockUser | null,
+      };
+      localStorage.setItem('gramvikas_db', JSON.stringify(cachedDB));
+      syncPush(cachedDB);
+    }
   }
+
+  // Start background sync loop once on client
+  if (!isSyncing) {
+    startSyncLoop();
+  }
+
+  return cachedDB;
 }
 
 function saveDB(data: any) {
+  cachedDB = data;
   if (typeof window !== 'undefined') {
     localStorage.setItem('gramvikas_db', JSON.stringify(data));
-    // Trigger window event so other hooks are notified
     window.dispatchEvent(new Event('gramvikas_db_update'));
+    syncPush(data);
+  }
+}
+
+async function syncPush(data: any) {
+  try {
+    await fetch('/api/simulator/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch (e) {
+    console.error('Failed to sync push database to server:', e);
+  }
+}
+
+function startSyncLoop() {
+  isSyncing = true;
+  
+  // Initial sync pull
+  syncPull();
+
+  // Poll server every 3 seconds for updates
+  setInterval(() => {
+    syncPull();
+  }, 3000);
+}
+
+async function syncPull() {
+  try {
+    const res = await fetch('/api/simulator/db');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.users) { // Checks if database has initialized entries
+      const currentString = JSON.stringify(cachedDB);
+      const serverString = JSON.stringify(data);
+      if (currentString !== serverString) {
+        cachedDB = data;
+        localStorage.setItem('gramvikas_db', serverString);
+        simulator.notify();
+      }
+    } else {
+      if (cachedDB) {
+        syncPush(cachedDB);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to sync pull database from server:', e);
   }
 }
 
