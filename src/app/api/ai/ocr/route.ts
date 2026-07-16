@@ -84,10 +84,10 @@ export async function POST(req: Request) {
     let extractedName = 'Rajesh Kumar';
     let isValid = true;
     let remarks = 'Document format and signatures verified successfully.';
-    let dob = '1995-05-12';
+    const dob = '1995-05-12';
     let annualIncome = 120000;
     let address = 'Ward No. 3, Rampur Village, Maharashtra';
-    let dateOfDeath = '2026-03-10';
+    const dateOfDeath = '2026-03-10';
 
     if (name.includes('birth') || certType === 'birth') {
       remarks = 'Verified: Birth declaration certificate with official hospital stamp.';

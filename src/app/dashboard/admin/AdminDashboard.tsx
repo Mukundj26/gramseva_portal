@@ -39,6 +39,9 @@ export default function AdminDashboard({ currentUser }: AdminProps) {
 
   // Load all users
   const { data: users } = useCollection<any>('users');
+
+  // Load all farmers
+  const { data: farmers } = useCollection<any>('farmers');
   
   // Load all applications
   const { data: allApplications } = useCollection<any>('applications');
@@ -120,6 +123,13 @@ export default function AdminDashboard({ currentUser }: AdminProps) {
   const [schemeModalOpen, setSchemeModalOpen] = useState(false);
   const [currentSchemeForm, setCurrentSchemeForm] = useState<any>({ name: '', description: '', incomeLimit: 500000, maxLandSize: 5, category: 'small,marginal', benefits: '' });
   const [isEditingScheme, setIsEditingScheme] = useState(false);
+
+  // User Directory State
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'citizen' | 'farmer'>('all');
+  const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'online' | 'offline'>('all');
+  const [selectedUserDetail, setSelectedUserDetail] = useState<any>(null);
+  const [userDetailModalOpen, setUserDetailModalOpen] = useState(false);
 
   // Verification Actions
   const handleOpenVerify = (app: any) => {
@@ -945,6 +955,7 @@ export default function AdminDashboard({ currentUser }: AdminProps) {
               <div>
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 mb-1">Grievance Photo Evidence</span>
                 <div className="max-w-[200px] h-32 rounded-xl overflow-hidden border border-stone-150 bg-stone-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={selectedComplaint.photoUrl}
                     alt="Proof evidence"
@@ -1004,6 +1015,253 @@ export default function AdminDashboard({ currentUser }: AdminProps) {
       {activeTab === 'village-info' && (
         <VillageDirectory isAdmin={true} />
       )}
+
+      {/* Tab 7: User Directory */}
+      {activeTab === 'users-list' && (
+        <div className="space-y-6">
+          {/* Header & Stats summary cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-850 rounded-2xl shadow-sm">
+              <span className="text-[10px] text-stone-450 uppercase font-extrabold tracking-wider block">Total Registered Users</span>
+              <h3 className="text-2xl font-black text-stone-850 dark:text-white mt-1">
+                {users?.length || 0}
+              </h3>
+            </div>
+            <div className="p-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-850 rounded-2xl shadow-sm">
+              <span className="text-[10px] text-stone-450 uppercase font-extrabold tracking-wider block">Online Sessions</span>
+              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+                {users?.filter((u: any) => u.status === 'online').length || 0}
+              </h3>
+            </div>
+            <div className="p-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-850 rounded-2xl shadow-sm">
+              <span className="text-[10px] text-stone-450 uppercase font-extrabold tracking-wider block">Total Citizens</span>
+              <h3 className="text-2xl font-black text-stone-850 dark:text-white mt-1">
+                {citizenCount}
+              </h3>
+            </div>
+            <div className="p-4 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-850 rounded-2xl shadow-sm">
+              <span className="text-[10px] text-stone-450 uppercase font-extrabold tracking-wider block">Total Farmers</span>
+              <h3 className="text-2xl font-black text-stone-850 dark:text-white mt-1">
+                {farmerCount}
+              </h3>
+            </div>
+          </div>
+
+          {/* User Directory main container */}
+          <div className="bg-white dark:bg-stone-900 border border-emerald-50 dark:border-stone-850 rounded-2xl shadow-sm p-6 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+              <div>
+                <h4 className="font-extrabold text-lg text-stone-900 dark:text-white">Portal User Registry</h4>
+                <p className="text-xs text-stone-450 mt-0.5">Track portal access sessions, credentials, and profile registries.</p>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Search user..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="px-3.5 py-1.5 text-sm rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/20 focus:outline-none focus:border-emerald-500 max-w-xs font-semibold"
+                />
+                
+                <select
+                  value={userRoleFilter}
+                  onChange={(e: any) => setUserRoleFilter(e.target.value)}
+                  className="px-3 py-1.5 text-xs rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 focus:outline-none font-bold"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="citizen">Citizens Only</option>
+                  <option value="farmer">Farmers Only</option>
+                </select>
+
+                <select
+                  value={userStatusFilter}
+                  onChange={(e: any) => setUserStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 text-xs rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 focus:outline-none font-bold"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="online">Online / Logged In</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </div>
+            </div>
+
+            {/* User Registry Table */}
+            {(!users || users.length === 0) ? (
+              <div className="text-center py-12 text-stone-400">
+                No users found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-100 dark:border-stone-850 text-stone-400 font-bold text-xs uppercase">
+                      <th className="pb-3">Name</th>
+                      <th className="pb-3">Email Address</th>
+                      <th className="pb-3">Role</th>
+                      <th className="pb-3">Session Status</th>
+                      <th className="pb-3">Last Active</th>
+                      <th className="pb-3 text-right">Profile Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100 dark:divide-stone-850">
+                    {users
+                      .filter((u: any) => {
+                        const matchesSearch = u.displayName.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                          u.email.toLowerCase().includes(userSearchQuery.toLowerCase());
+                        const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
+                        const matchesStatus = userStatusFilter === 'all' || (u.status || 'offline') === userStatusFilter;
+                        return matchesSearch && matchesRole && matchesStatus;
+                      })
+                      .map((u: any) => (
+                        <tr key={u.uid} className="hover:bg-stone-50/50 dark:hover:bg-stone-850/20 transition">
+                          <td className="py-3.5 font-bold text-stone-850 dark:text-stone-200">
+                            {u.displayName}
+                          </td>
+                          <td className="py-3.5 text-stone-550 dark:text-stone-400 font-semibold text-xs">
+                            {u.email}
+                          </td>
+                          <td className="py-3.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
+                              u.role === 'farmer'
+                                ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300 border border-amber-100 dark:border-amber-900'
+                                : u.role === 'admin'
+                                ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:text-rose-300 border border-rose-100 dark:border-rose-900'
+                                : 'bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-300 border border-blue-100 dark:border-blue-900'
+                            }`}>
+                              {u.role}
+                            </span>
+                          </td>
+                          <td className="py-3.5 font-semibold text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${
+                                u.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300 dark:bg-stone-700'
+                              }`} />
+                              <span className={u.status === 'online' ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-stone-450'}>
+                                {u.status === 'online' ? 'Online / Logged In' : 'Offline'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 text-xs text-stone-450">
+                            {u.lastActive ? new Date(u.lastActive).toLocaleString() : 'Never'}
+                          </td>
+                          <td className="py-3.5 text-right">
+                            <button
+                              onClick={() => {
+                                setSelectedUserDetail(u);
+                                setUserDetailModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 hover:bg-emerald-100 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ml-auto border border-emerald-100 dark:border-emerald-900"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              View Profile
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* User Registry Detail Modal */}
+      <Modal isOpen={userDetailModalOpen} onClose={() => setUserDetailModalOpen(false)} title="User Registration Profile">
+        {selectedUserDetail && (
+          <div className="space-y-4 text-stone-850 dark:text-stone-200">
+            {/* User Profile Info Card */}
+            <div className="p-4 bg-stone-50 dark:bg-stone-950/40 border border-stone-200 dark:border-stone-850 rounded-2xl space-y-3">
+              <div className="flex justify-between items-center pb-2 border-b border-stone-150">
+                <h4 className="font-extrabold text-stone-900 dark:text-white text-base">
+                  {selectedUserDetail.displayName}
+                </h4>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide ${
+                  selectedUserDetail.role === 'farmer'
+                    ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/30'
+                    : selectedUserDetail.role === 'admin'
+                    ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/30'
+                    : 'bg-blue-50 text-blue-800 dark:bg-blue-950/30'
+                }`}>
+                  {selectedUserDetail.role}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-[10px] text-stone-400 uppercase font-bold tracking-wide block">UID Reference</span>
+                  <span className="font-bold text-stone-750 dark:text-stone-300">{selectedUserDetail.uid}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-stone-400 uppercase font-bold tracking-wide block">Email Address</span>
+                  <span className="font-bold text-stone-750 dark:text-stone-300">{selectedUserDetail.email}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-stone-400 uppercase font-bold tracking-wide block">Date Registered</span>
+                  <span className="font-bold text-stone-750 dark:text-stone-300">
+                    {new Date(selectedUserDetail.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-stone-400 uppercase font-bold tracking-wide block">Session Access</span>
+                  <span className="font-bold text-stone-750 dark:text-stone-300 capitalize">{selectedUserDetail.status || 'offline'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Conditional Sub-Data (e.g. if they are a Farmer, fetch and render farmer statistics/registry details) */}
+            {selectedUserDetail.role === 'farmer' && (() => {
+              const farmerData = farmers?.find((f: any) => f.userId === selectedUserDetail.uid);
+              if (!farmerData) {
+                return (
+                  <div className="p-3 text-center border border-dashed border-stone-200 dark:border-stone-800 rounded-xl text-stone-400 text-xs">
+                    No farmer profiling setup for this account.
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-3">
+                  <h5 className="font-black text-xs uppercase tracking-wider text-stone-450">Agricultural Land Registry Profile</h5>
+                  <div className="p-4 border border-amber-100 dark:border-amber-900 bg-amber-50/10 rounded-2xl space-y-2 text-xs">
+                    <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-850">
+                      <span className="font-bold text-stone-450">Land Holding Size:</span>
+                      <span className="font-extrabold text-stone-750 dark:text-stone-250">{farmerData.landSize} Acres</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-850">
+                      <span className="font-bold text-stone-450">Soil Classification:</span>
+                      <span className="font-extrabold text-stone-750 dark:text-stone-250 capitalize">{farmerData.soilType} Soil</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-850">
+                      <span className="font-bold text-stone-450">Irrigation Method:</span>
+                      <span className="font-extrabold text-stone-750 dark:text-stone-250 capitalize">{farmerData.waterSource}</span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-stone-100 dark:border-stone-850">
+                      <span className="font-bold text-stone-450">Current Cultivating Crop:</span>
+                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{farmerData.currentCrop || 'None'}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="font-bold text-stone-450">Reported Annual Farming Income:</span>
+                      <span className="font-extrabold text-stone-750 dark:text-stone-250 font-mono">₹{farmerData.income?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setUserDetailModalOpen(false)}
+                className="px-4 py-2 border border-stone-200 dark:border-stone-850 hover:bg-stone-50 dark:hover:bg-stone-850/50 rounded-xl text-xs font-bold transition"
+              >
+                Close Details
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

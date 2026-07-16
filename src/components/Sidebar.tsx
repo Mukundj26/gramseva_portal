@@ -18,7 +18,8 @@ import {
   TrendingUp,
   AlertTriangle,
   Map,
-  Calendar
+  Calendar,
+  Users
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -149,6 +150,12 @@ export default function Sidebar({ currentUser, isOpen, onClose }: SidebarProps) 
         label: 'Admin Overview',
         icon: LayoutDashboard,
         href: '/dashboard?tab=overview',
+      },
+      {
+        id: 'users-list',
+        label: 'User Directory',
+        icon: Users,
+        href: '/dashboard?tab=users-list',
       },
       {
         id: 'queue',

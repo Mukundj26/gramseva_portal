@@ -147,7 +147,7 @@ export default function SmartCalendar({ isFarmer = true }: SmartCalendarProps) {
   const activeDayEvents = selectedDay ? getEventsForDay(selectedDay) : [];
 
   // Get all events in the month for a list view (Timeline view)
-  const allMonthlyEvents = [];
+  const allMonthlyEvents: any[] = [];
   for (let d = 1; d <= daysInMonth; d++) {
     const dayEvts = getEventsForDay(d);
     dayEvts.forEach(e => {

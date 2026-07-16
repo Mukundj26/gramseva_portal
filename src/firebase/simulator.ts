@@ -7,6 +7,8 @@ export interface MockUser {
   displayName: string;
   role: 'citizen' | 'farmer' | 'admin';
   createdAt: string;
+  status?: 'online' | 'offline';
+  lastActive?: string;
 }
 
 export interface MockFarmer {
@@ -416,21 +418,27 @@ const initialUsers: Record<string, MockUser> = {
     email: 'citizen@village.com',
     displayName: 'Rajesh Kumar',
     role: 'citizen',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
+    status: 'online',
+    lastActive: new Date(Date.now() - 3600000 * 1.5).toISOString(),
   },
   'mock-farmer-456': {
     uid: 'mock-farmer-456',
     email: 'farmer@farm.com',
     displayName: 'Harish Patel',
     role: 'farmer',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+    status: 'offline',
+    lastActive: new Date(Date.now() - 86400000 * 2).toISOString(),
   },
   'mock-admin-789': {
     uid: 'mock-admin-789',
     email: 'admin@gramvikas.gov.in',
     displayName: 'Panchayat Admin',
     role: 'admin',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 86400000 * 15).toISOString(),
+    status: 'online',
+    lastActive: new Date().toISOString(),
   }
 };
 
@@ -854,6 +862,11 @@ export const simulator = {
           return reject(new Error('Password must be at least 6 characters.'));
         }
 
+        // Update status to online and record last active
+        found.status = 'online';
+        found.lastActive = new Date().toISOString();
+        db.users[found.uid] = found;
+
         db.currentUser = found;
         saveDB(db);
         this.notify();
@@ -880,7 +893,9 @@ export const simulator = {
           email,
           displayName: fullName,
           role,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          status: 'online',
+          lastActive: new Date().toISOString()
         };
 
         db.users[uid] = newUser;
@@ -912,6 +927,13 @@ export const simulator = {
 
   logout() {
     const db = loadDB();
+    if (db.currentUser) {
+      const uid = db.currentUser.uid;
+      if (db.users[uid]) {
+        db.users[uid].status = 'offline';
+        db.users[uid].lastActive = new Date().toISOString();
+      }
+    }
     db.currentUser = null;
     saveDB(db);
     this.notify();

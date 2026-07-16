@@ -334,6 +334,7 @@ export default function GrievanceBox({ currentUser }: GrievanceBoxProps) {
                     {/* Complaint Photo Preview if attached */}
                     {comp.photoUrl && (
                       <div className="w-full md:w-32 h-32 rounded-xl border border-stone-150 dark:border-stone-850 overflow-hidden bg-stone-50 shrink-0 self-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={comp.photoUrl}
                           alt="Grievance Proof"

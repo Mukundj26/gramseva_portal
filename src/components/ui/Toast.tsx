@@ -1,10 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface ToastMessage {
   id: string;
@@ -60,12 +60,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   ? 'bg-emerald-50/90 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-200'
                   : toast.type === 'error'
                   ? 'bg-rose-50/90 dark:bg-rose-950/80 border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200'
+                  : toast.type === 'warning'
+                  ? 'bg-amber-50/90 dark:bg-amber-950/80 border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200'
                   : 'bg-blue-50/90 dark:bg-blue-950/80 border-blue-200 dark:border-blue-900 text-blue-800 dark:text-blue-200'
               }`}
             >
               <div className="mt-0.5 shrink-0">
                 {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
                 {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />}
+                {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
                 {toast.type === 'info' && <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
               </div>
               <div className="flex-1 text-sm font-medium leading-5">
